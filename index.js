@@ -24,6 +24,33 @@ function extractTodos(files) {
     return todos;
 }
 
+function formatTodoTable(todos) {
+    return todos.map(todo => {
+        const parts = todo.split(';');
+        const importance = todo.includes('!') ? '!' : ' ';
+        const user = parts.length >= 3 ? parts[0].replace('// TODO ', '').trim() : ' ';
+        const date = parts.length >= 3 ? parts[1].trim() : ' ';
+        const comment = parts.length >= 3 ? parts[2].trim() : todo.replace('// TODO ', '').trim();
+
+        return {
+            importance: importance,
+            user: user.length > 10 ? user.substring(0, 7) + '...' : user,
+            date: date.length > 10 ? date.substring(0, 10) : date,
+            comment: comment.length > 50 ? comment.substring(0, 47) + '...' : comment
+        };
+    });
+}
+
+function printTable(todos) {
+    console.log('  !  |  user        |  date        |  comment');
+    console.log('-'.repeat(77));
+    todos.forEach(todo => {
+        console.log(
+            `  ${todo.importance}  |  ${todo.user.padEnd(10)}  |  ${todo.date.padEnd(10)}  |  ${todo.comment.padEnd(50)}`
+        );
+    });
+}
+
 function filterImportantTodos(todos) {
     return todos.filter(todo => todo.includes('!'));
 }
@@ -82,6 +109,31 @@ function sortByDate(todos) {
     });
 }
 
+function filterTodosAfterDate(todos, dateString) {
+    const dateParts = dateString.split('-');
+    let targetDate;
+
+    if (dateParts.length === 1) {
+        targetDate = new Date(dateParts[0], 0, 1);
+    } else if (dateParts.length === 2) {
+        targetDate = new Date(dateParts[0], dateParts[1] - 1, 1);
+    } else if (dateParts.length === 3) {
+        targetDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+    } else {
+        console.log('Invalid date format');
+        return [];
+    }
+
+    return todos.filter(todo => {
+        const parts = todo.split(';');
+        if (parts.length >= 3) {
+            const todoDate = new Date(parts[1].trim());
+            return todoDate > targetDate;
+        }
+        return false;
+    });
+}
+
 function processCommand(command) {
     const todos = extractTodos(files);
 
@@ -90,16 +142,16 @@ function processCommand(command) {
             process.exit(0);
             break;
         case command === 'show':
-            todos.forEach(todo => console.log(todo));
+            printTable(formatTodoTable(todos));
             break;
         case command === 'important':
             const importantTodos = filterImportantTodos(todos);
-            importantTodos.forEach(todo => console.log(todo));
+            printTable(formatTodoTable(importantTodos));
             break;
         case command.startsWith('user '):
             const username = command.split(' ')[1];
             const userTodos = filterTodosByUser(todos, username);
-            userTodos.forEach(todo => console.log(todo));
+            printTable(formatTodoTable(userTodos));
             break;
         case command.startsWith('sort '):
             const sortType = command.split(' ')[1];
@@ -118,12 +170,15 @@ function processCommand(command) {
                     console.log('wrong sort type');
                     return;
             }
-            sortedTodos.forEach(todo => console.log(todo));
+            printTable(formatTodoTable(sortedTodos));
+            break;
+        case command.startsWith('date '):
+            const dateString = command.split(' ')[1];
+            const filteredTodos = filterTodosAfterDate(todos, dateString);
+            printTable(formatTodoTable(filteredTodos));
             break;
         default:
             console.log('wrong command');
             break;
     }
 }
-
-// TODO you can do it!
